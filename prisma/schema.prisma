@@ -1,0 +1,135 @@
+// prisma/schema.prisma
+// Database schema for Bibliotheca Library Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── User / Auth ────────────────────────────────────────────────────────────
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  password     String
+  firstName    String
+  lastName     String
+  phone        String?
+  address      String?
+  dateOfBirth  DateTime?
+  role         Role          @default(MEMBER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  membership   Membership?
+  transactions Transaction[]
+  bookRequests BookRequest[]
+}
+
+enum Role {
+  MEMBER
+  STAFF
+  ADMIN
+}
+
+// ─── Membership ─────────────────────────────────────────────────────────────
+model Membership {
+  id           String           @id @default(cuid())
+  userId       String           @unique
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membershipId String           @unique // e.g. LIB2024001
+  type         MembershipType   @default(STANDARD)
+  status       MembershipStatus @default(PENDING)
+  idType       String           @default("National ID")
+  idNumber     String?
+  validUntil   DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+enum MembershipType {
+  STANDARD
+  PREMIUM
+  STUDENT
+  FACULTY
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+}
+
+// ─── Books ──────────────────────────────────────────────────────────────────
+model Book {
+  id           String        @id @default(cuid())
+  title        String
+  author       String
+  isbn         String        @unique
+  category     String
+  publisher    String?
+  publishYear  Int?
+  description  String?
+  coverEmoji   String?       @default("📚")
+  coverColor   String?       @default("#e8f4f8")
+  totalCopies  Int           @default(1)
+  available    Int           @default(1)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+  requests     BookRequest[]
+}
+
+// ─── Transactions (Issue / Return) ──────────────────────────────────────────
+model Transaction {
+  id         String            @id @default(cuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id])
+  bookId     String
+  book       Book              @relation(fields: [bookId], references: [id])
+  issueDate  DateTime          @default(now())
+  dueDate    DateTime
+  returnDate DateTime?
+  status     TransactionStatus @default(ACTIVE)
+  fine       Float             @default(0)
+  finePaid   Boolean           @default(false)
+  notes      String?
+  issuedBy   String?           // staff/admin userId
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}
+
+enum TransactionStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+  LOST
+}
+
+// ─── Book Requests ───────────────────────────────────────────────────────────
+model BookRequest {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
+  bookId     String?
+  book       Book?         @relation(fields: [bookId], references: [id])
+  title      String
+  author     String?
+  isbn       String?
+  category   String?
+  reason     String?
+  status     RequestStatus @default(PENDING)
+  reviewedBy String?
+  reviewNote String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+}
